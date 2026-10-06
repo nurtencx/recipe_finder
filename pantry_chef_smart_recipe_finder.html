@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PantryChef - Smart Recipe Finder</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            200: '#fed7aa',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                            800: '#9a3412',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar for smooth browsing */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .recipe-card-gradient {
+            background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.85) 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+    <!-- Top Navigation Bar -->
+    <header class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-500 text-white p-2.5 rounded-xl shadow-md shadow-brand-500/20">
+                    <i class="fa-solid font-bold fa-utensils text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-slate-900 leading-none">Pantry<span class="text-brand-500">Chef</span></h1>
+                    <p class="text-xs text-slate-500 font-medium">Smart Ingredients Matcher</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <button id="favorites-toggle-btn" class="relative flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition text-sm">
+                    <i class="fa-solid fa-heart text-red-500"></i>
+                    <span class="hidden sm:inline">Saved Recipes</span>
+                    <span id="fav-count-badge" class="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+        <!-- Left Sidebar: Kitchen Inventory & Pantry -->
+        <aside class="lg:col-span-4 xl:col-span-4 space-y-6">
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm sticky top-20">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-kitchen-set text-brand-500 text-lg"></i>
+                        <h2 class="font-bold text-slate-900 text-lg">My Pantry</h2>
+                    </div>
+                    <button id="clear-all-pantry" class="text-xs text-slate-400 hover:text-red-500 transition font-medium hidden">
+                        Clear All
+                    </button>
+                </div>
+
+                <!-- Custom Ingredient Add Input -->
+                <div class="mt-4">
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Add Any Ingredient</label>
+                    <form id="add-custom-form" class="flex gap-2">
+                        <input type="text" id="custom-ingredient-input" placeholder="e.g. Avocado, Tofu, Basil..." 
+                            class="flex-1 px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white transition">
+                        <button type="submit" class="bg-brand-500 hover:bg-brand-600 text-white px-3.5 py-2 rounded-xl text-sm font-semibold transition">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Selected Active Ingredients Tags -->
+                <div class="mt-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Selected Ingredients (<span id="selected-count">0</span>)</span>
+                    </div>
+                    <div id="selected-tags-container" class="flex flex-wrap gap-1.5 min-h-[42px] p-2 bg-slate-50 rounded-xl border border-slate-100">
+                        <span class="text-xs text-slate-400 italic self-center px-1">Select ingredients below to match recipes...</span>
+                    </div>
+                </div>
+
+                <!-- Pantry Category Accordion / List -->
+                <div class="mt-5 space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Quick Pantry Pick</p>
+                    <div id="pantry-categories" class="space-y-3">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Main View: Recipe Suggestions & Filters -->
+        <section class="lg:col-span-8 xl:col-span-8 space-y-6">
+            
+            <!-- Controls, Search, and Dietary Filters Header -->
+            <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="relative flex-1">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="recipe-search" placeholder="Search recipe title or ingredient..." 
+                            class="w-full pl-10 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:bg-white transition">
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <select id="sort-select" class="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                            <option value="match">Sort by Pantry Match</option>
+                            <option value="time">Sort by Cook Time</option>
+                            <option value="calories">Sort by Calories</option>
+                            <option value="alpha">Sort A - Z</option>
+                        </select>
+                        
+                        <select id="match-threshold" class="px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                            <option value="0">All Recipes</option>
+                            <option value="50">50%+ Ingredients</option>
+                            <option value="75">75%+ Ingredients</option>
+                            <option value="100">100% Full Match</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Category & Dietary Quick Badges -->
+                <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
+                    <span class="font-semibold text-slate-400 mr-1"><i class="fa-solid fa-filter text-slate-400 mr-1"></i>Dietary:</span>
+                    <button data-diet="All" class="diet-btn px-3 py-1.5 rounded-lg font-medium transition bg-brand-500 text-white">All</button>
+                    <button data-diet="Vegetarian" class="diet-btn px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">Vegetarian</button>
+                    <button data-diet="Vegan" class="diet-btn px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">Vegan</button>
+                    <button data-diet="Gluten-Free" class="diet-btn px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">Gluten-Free</button>
+                    <button data-diet="Low-Carb" class="diet-btn px-3 py-1.5 rounded-lg font-medium transition bg-slate-100 text-slate-600 hover:bg-slate-200">Low-Carb</button>
+                </div>
+            </div>
+
+            <!-- Recipe Results Counter Bar -->
+            <div class="flex items-center justify-between px-1">
+                <p id="results-count" class="text-sm font-semibold text-slate-600">Showing 50 recipes</p>
+                <span id="pantry-status-hint" class="text-xs text-brand-600 font-medium bg-brand-50 px-2.5 py-1 rounded-md border border-brand-100">
+                    💡 Tip: Select pantry items on the left to sort by available ingredients!
+                </span>
+            </div>
+
+            <!-- Recipe Grid -->
+            <div id="recipe-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Recipe Cards rendered dynamically -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="no-recipes-found" class="hidden text-center py-16 bg-white rounded-2xl border border-slate-200 p-8">
+                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 text-2xl">
+                    <i class="fa-solid fa-utensils-slash"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800">No Matching Recipes Found</h3>
+                <p class="text-slate-500 text-sm mt-1 max-w-sm mx-auto">Try clearing some dietary filters, lowering the match threshold, or searching for other items.</p>
+                <button id="reset-filters-btn" class="mt-4 px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white font-semibold rounded-xl text-sm transition">
+                    Reset All Filters
+                </button>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Recipe Detail & Interactive Cook Mode Modal -->
+    <div id="recipe-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-white w-full max-w-3xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300" id="modal-container">
+            
+            <!-- Modal Header / Image Hero -->
+            <div class="relative h-56 sm:h-64 bg-slate-900 overflow-hidden flex-shrink-0">
+                <img id="modal-img" src="" alt="" class="w-full h-full object-cover opacity-80">
+                <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent"></div>
+                
+                <button id="close-modal" class="absolute top-4 right-4 w-9 h-9 bg-slate-900/60 hover:bg-slate-900 text-white rounded-full flex items-center justify-center backdrop-blur-md transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+
+                <div class="absolute bottom-4 left-6 right-6 text-white">
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span id="modal-category" class="bg-brand-500 text-white text-xs font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">Category</span>
+                        <span id="modal-diet" class="bg-slate-800/80 backdrop-blur-sm text-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">Diet</span>
+                        <span id="modal-difficulty" class="bg-slate-800/80 backdrop-blur-sm text-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-700">Medium</span>
+                    </div>
+                    <h2 id="modal-title" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Recipe Title</h2>
+                </div>
+            </div>
+
+            <!-- Modal Body Scrollable -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <!-- Quick Info Bar -->
+                <div class="grid grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 text-center">
+                    <div>
+                        <span class="block text-xs text-slate-400 font-medium">Prep + Cook</span>
+                        <span id="modal-time" class="text-sm font-bold text-slate-800"><i class="fa-regular fa-clock text-brand-500 mr-1"></i>30 mins</span>
+                    </div>
+                    <div class="border-x border-slate-200">
+                        <span class="block text-xs text-slate-400 font-medium">Nutrition</span>
+                        <span id="modal-calories" class="text-sm font-bold text-slate-800"><i class="fa-solid fa-fire text-amber-500 mr-1"></i>450 kcal</span>
+                    </div>
+                    <div>
+                        <span class="block text-xs text-slate-400 font-medium">Pantry Match</span>
+                        <span id="modal-match-badge" class="text-sm font-bold text-emerald-600"><i class="fa-solid fa-check-circle mr-1"></i>80%</span>
+                    </div>
+                </div>
+
+                <!-- Missing Ingredients Notice -->
+                <div id="modal-missing-box" class="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-1">
+                    <p class="font-bold flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-amber-600"></i> Missing Pantry Ingredients:</p>
+                    <p id="modal-missing-list" class="text-amber-800"></p>
+                </div>
+
+                <!-- Ingredients & Step Checklist Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                    
+                    <!-- Ingredients Sidebar -->
+                    <div class="md:col-span-5 space-y-3">
+                        <h3 class="font-bold text-slate-900 text-base flex items-center justify-between">
+                            <span>Ingredients</span>
+                            <span class="text-xs text-slate-400 font-normal">Check what you have</span>
+                        </h3>
+                        <ul id="modal-ingredients-list" class="space-y-2 text-sm">
+                            <!-- Dynamic items with status tags -->
+                        </ul>
+                    </div>
+
+                    <!-- Step-by-step Instructions -->
+                    <div class="md:col-span-7 space-y-3">
+                        <h3 class="font-bold text-slate-900 text-base flex items-center justify-between">
+                            <span>Interactive Cooking Steps</span>
+                            <span class="text-xs text-brand-600 font-semibold">Step-by-step</span>
+                        </h3>
+                        <div id="modal-steps-container" class="space-y-3">
+                            <!-- Dynamic instruction steps with checkboxes -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-3.5 border-t border-slate-200 flex items-center justify-between">
+                <button id="modal-fav-btn" class="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-red-500 transition">
+                    <i class="fa-regular fa-heart text-base"></i>
+                    <span>Save to Favorites</span>
+                </button>
+                <button id="modal-close-bottom" class="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold rounded-xl text-sm transition">
+                    Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* ----------------------------------------------------
+           1. COMPREHENSIVE 50-RECIPE DATABASE
+           ---------------------------------------------------- */
+        const recipeDatabase = [
+            {
+                id: 1,
+                title: "Classic Creamy Garlic Tomato Pasta",
+                category: "Italian",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 420,
+                image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Pasta", "Garlic", "Tomato Sauce", "Heavy Cream", "Olive Oil", "Parmesan Cheese", "Basil", "Salt", "Black Pepper"],
+                instructions: [
+                    "Boil pasta in salted water until al dente.",
+                    "Heat olive oil in a pan and sauté minced garlic for 1 minute.",
+                    "Pour in tomato sauce and heavy cream; simmer on low heat for 5 minutes.",
+                    "Toss cooked pasta into the cream sauce.",
+                    "Garnish with grated Parmesan cheese and fresh basil leaves."
+                ]
+            },
+            {
+                id: 2,
+                title: "Avocado & Chickpea Salad Bowl",
+                category: "Salads",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 310,
+                image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Avocado", "Chickpeas", "Cucumber", "Cherry Tomatoes", "Lemon", "Olive Oil", "Red Onion", "Parsley", "Salt"],
+                instructions: [
+                    "Drain and rinse canned chickpeas.",
+                    "Dice avocado, cucumber, cherry tomatoes, and red onion into a large bowl.",
+                    "Whisk together lemon juice, olive oil, salt, and chopped parsley.",
+                    "Toss all ingredients gently and serve chilled."
+                ]
+            },
+            {
+                id: 3,
+                title: "Honey Garlic Glazed Chicken Breast",
+                category: "Main Course",
+                diet: "Gluten-Free",
+                prepTime: 10,
+                cookTime: 20,
+                difficulty: "Medium",
+                calories: 480,
+                image: "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Chicken Breast", "Honey", "Garlic", "Soy Sauce", "Butter", "Olive Oil", "Green Onions", "Black Pepper"],
+                instructions: [
+                    "Season chicken breasts with salt and black pepper.",
+                    "Sear chicken in olive oil over medium-high heat for 6-7 minutes each side until cooked.",
+                    "Melt butter in the pan, add minced garlic, honey, and soy sauce.",
+                    "Spoon glazed honey sauce over chicken until thickened.",
+                    "Top with sliced green onions."
+                ]
+            },
+            {
+                id: 4,
+                title: "Quick Egg & Vegetable Fried Rice",
+                category: "Asian",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 380,
+                image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Rice", "Eggs", "Carrots", "Peas", "Soy Sauce", "Garlic", "Sesame Oil", "Green Onions"],
+                instructions: [
+                    "Heat sesame oil in a wok or large pan.",
+                    "Scramble eggs lightly and set aside.",
+                    "Sauté minced garlic, diced carrots, and peas until soft.",
+                    "Add cooked cold rice and stir fry on high heat.",
+                    "Pour soy sauce, return scrambled eggs, and toss with green onions."
+                ]
+            },
+            {
+                id: 5,
+                title: "Loaded Spinach & Mushroom Omelet",
+                category: "Breakfast",
+                diet: "Low-Carb",
+                prepTime: 5,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 290,
+                image: "https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Eggs", "Spinach", "Mushrooms", "Cheddar Cheese", "Butter", "Salt", "Black Pepper"],
+                instructions: [
+                    "Whisk eggs with a pinch of salt and pepper.",
+                    "Melt butter in a skillet and sauté sliced mushrooms and spinach until wilted.",
+                    "Pour whisked eggs into the skillet and cook evenly on medium heat.",
+                    "Sprinkle cheddar cheese over one half and fold over to melt."
+                ]
+            },
+            {
+                id: 6,
+                title: "Savory Ground Beef Tacos",
+                category: "Mexican",
+                diet: "Gluten-Free",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 520,
+                image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Ground Beef", "Tortillas", "Cheddar Cheese", "Lettuce", "Tomatoes", "Cumin", "Chili Powder", "Garlic"],
+                instructions: [
+                    "Brown ground beef in a skillet with garlic, cumin, and chili powder.",
+                    "Warm tortillas on a hot pan.",
+                    "Assemble tacos by filling tortillas with seasoned beef.",
+                    "Top with shredded cheddar cheese, lettuce, and diced tomatoes."
+                ]
+            },
+            {
+                id: 7,
+                title: "Creamy Mushroom & Parmesan Risotto",
+                category: "Italian",
+                diet: "Vegetarian",
+                prepTime: 15,
+                cookTime: 30,
+                difficulty: "Hard",
+                calories: 490,
+                image: "https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Rice", "Mushrooms", "Vegetable Broth", "Butter", "Parmesan Cheese", "Onion", "Garlic", "White Wine"],
+                instructions: [
+                    "Sauté chopped onions, garlic, and mushrooms in butter until tender.",
+                    "Add Arborio rice and toast for 2 minutes.",
+                    "Slowly ladle warm vegetable broth one cup at a time while stirring constantly.",
+                    "Once rice is tender and creamy, stir in grated parmesan and serve warm."
+                ]
+            },
+            {
+                id: 8,
+                title: "Classic Lemon Garlic Baked Salmon",
+                category: "Seafood",
+                diet: "Low-Carb",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Medium",
+                calories: 410,
+                image: "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Salmon", "Lemon", "Garlic", "Butter", "Parsley", "Olive Oil", "Salt", "Black Pepper"],
+                instructions: [
+                    "Preheat oven to 400°F (200°C).",
+                    "Place salmon fillets on a foil-lined baking sheet.",
+                    "Top with melted butter, minced garlic, lemon juice, salt, and pepper.",
+                    "Bake for 12-15 minutes until salmon flakes easily with a fork.",
+                    "Garnish with fresh lemon slices and parsley."
+                ]
+            },
+            {
+                id: 9,
+                title: "Spicy Coconut Tofu Curry",
+                category: "Asian",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 20,
+                difficulty: "Medium",
+                calories: 430,
+                image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tofu", "Coconut Milk", "Curry Powder", "Bell Peppers", "Spinach", "Garlic", "Ginger", "Rice"],
+                instructions: [
+                    "Cube tofu and sear in a skillet until crisp on edges.",
+                    "Sauté garlic, minced ginger, and sliced bell peppers in oil.",
+                    "Stir in curry powder and pour coconut milk.",
+                    "Simmer curry for 10 minutes, add spinach and tofu, and serve with rice."
+                ]
+            },
+            {
+                id: 10,
+                title: "Crispy Garlic Roasted Potatoes",
+                category: "Side Dish",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 35,
+                difficulty: "Easy",
+                calories: 260,
+                image: "https://images.unsplash.com/photo-1592417817098-8f3d6ef23a85?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Potatoes", "Olive Oil", "Garlic", "Rosemary", "Salt", "Black Pepper", "Paprika"],
+                instructions: [
+                    "Dice potatoes into bite-sized cubes.",
+                    "Toss with olive oil, minced garlic, paprika, rosemary, salt, and pepper.",
+                    "Spread evenly on a baking sheet.",
+                    "Roast at 425°F (220°C) for 35 minutes until golden and crisp."
+                ]
+            },
+            {
+                id: 11,
+                title: "Caprese Salad with Balsamic Glaze",
+                category: "Appetizer",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 220,
+                image: "https://images.unsplash.com/photo-1592417817098-8f3d6ef23a85?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Mozzarella", "Tomatoes", "Basil", "Olive Oil", "Balsamic Vinegar", "Salt", "Black Pepper"],
+                instructions: [
+                    "Slice fresh tomatoes and mozzarella cheese into round discs.",
+                    "Alternate slices on a serving platter with fresh basil leaves.",
+                    "Drizzle generously with extra virgin olive oil and balsamic glaze.",
+                    "Season with cracked sea salt and black pepper."
+                ]
+            },
+            {
+                id: 12,
+                title: "Zesty Greek Yogurt Cucumber Tzatziki Dip",
+                category: "Snack",
+                diet: "Gluten-Free",
+                prepTime: 15,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 140,
+                image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Greek Yogurt", "Cucumber", "Garlic", "Lemon", "Olive Oil", "Dill", "Salt"],
+                instructions: [
+                    "Grate cucumber and squeeze out excess moisture using a towel.",
+                    "In a bowl, mix Greek yogurt, minced garlic, lemon juice, and olive oil.",
+                    "Fold in grated cucumber and fresh chopped dill.",
+                    "Chill in fridge for 20 minutes before serving."
+                ]
+            },
+            {
+                id: 13,
+                title: "Fluffy Berry Buttermilk Pancakes",
+                category: "Breakfast",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 390,
+                image: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Flour", "Milk", "Eggs", "Butter", "Blueberries", "Maple Syrup", "Baking Powder", "Sugar"],
+                instructions: [
+                    "Whisk flour, baking powder, and sugar in a large bowl.",
+                    "Beat egg with milk and melted butter; combine with dry ingredients.",
+                    "Gently fold fresh blueberries into batter.",
+                    "Ladle batter onto a buttered griddle and cook until golden on both sides.",
+                    "Serve warm with maple syrup."
+                ]
+            },
+            {
+                id: 14,
+                title: "Hearty Lentil & Vegetable Soup",
+                category: "Soup",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 30,
+                difficulty: "Medium",
+                calories: 320,
+                image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Lentils", "Carrots", "Celery", "Onion", "Garlic", "Tomato Paste", "Vegetable Broth", "Cumin", "Spinach"],
+                instructions: [
+                    "Sauté chopped onion, carrots, and celery in a pot until softened.",
+                    "Add garlic, cumin, tomato paste, and rinsed lentils.",
+                    "Pour vegetable broth and bring to a boil; cover and simmer 25 minutes.",
+                    "Stir in fresh spinach until wilted and serve hot."
+                ]
+            },
+            {
+                id: 15,
+                title: "Classic Beef & Cheese Quesadilla",
+                category: "Mexican",
+                diet: "General",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 550,
+                image: "https://images.unsplash.com/photo-1618040996337-56904b7850b9?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tortillas", "Ground Beef", "Cheddar Cheese", "Onion", "Salsa", "Sour Cream", "Butter"],
+                instructions: [
+                    "Sauté ground beef with chopped onions until thoroughly browned.",
+                    "Butter one side of tortillas.",
+                    "Place tortilla in pan, layer cheddar cheese and beef, fold in half.",
+                    "Grill until golden brown and cheese is fully melted.",
+                    "Serve with salsa and sour cream."
+                ]
+            },
+            {
+                id: 16,
+                title: "Teriyaki Chicken Stir-Fry with Broccoli",
+                category: "Asian",
+                diet: "Gluten-Free",
+                prepTime: 15,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 460,
+                image: "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Chicken Breast", "Broccoli", "Soy Sauce", "Honey", "Garlic", "Ginger", "Sesame Oil", "Rice"],
+                instructions: [
+                    "Cut chicken breast into bite-sized strips.",
+                    "Whisk soy sauce, honey, minced garlic, and ginger for sauce.",
+                    "Stir fry chicken in sesame oil until brown, add broccoli florets.",
+                    "Pour sauce into pan and simmer until thick and glossy.",
+                    "Serve piping hot over rice."
+                ]
+            },
+            {
+                id: 17,
+                title: "Cheesy Baked Macaroni & Cheese",
+                category: "Pasta",
+                diet: "Vegetarian",
+                prepTime: 15,
+                cookTime: 25,
+                difficulty: "Medium",
+                calories: 580,
+                image: "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Pasta", "Cheddar Cheese", "Milk", "Butter", "Flour", "Breadcrumbs", "Paprika", "Salt"],
+                instructions: [
+                    "Cook pasta until al dente.",
+                    "Melt butter in saucepan, whisk in flour to make roux.",
+                    "Gradually whisk in milk until smooth sauce forms; stir in cheddar cheese.",
+                    "Combine sauce and pasta, transfer to baking dish.",
+                    "Top with breadcrumbs and bake at 375°F for 20 minutes."
+                ]
+            },
+            {
+                id: 18,
+                title: "Guacamole & Homemade Tortilla Chips",
+                category: "Snack",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 280,
+                image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Avocado", "Lime", "Coriander", "Red Onion", "Tomatoes", "Garlic", "Tortillas", "Salt"],
+                instructions: [
+                    "Mash ripe avocados with lime juice in a bowl.",
+                    "Fold in finely diced red onion, tomatoes, garlic, and coriander.",
+                    "Season generously with salt.",
+                    "Serve with crispy tortilla chips."
+                ]
+            },
+            {
+                id: 19,
+                title: "Spicy Peanut Noodle Bowl",
+                category: "Asian",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 440,
+                image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Noodles", "Peanut Butter", "Soy Sauce", "Maple Syrup", "Chili Flakes", "Cucumber", "Green Onions", "Sesame Oil"],
+                instructions: [
+                    "Cook noodles according to package instructions and drain.",
+                    "Whisk peanut butter, soy sauce, maple syrup, sesame oil, and chili flakes with warm water.",
+                    "Toss warm noodles in peanut sauce until coated.",
+                    "Top with fresh sliced cucumber and green onions."
+                ]
+            },
+            {
+                id: 20,
+                title: "Mediterranean Tuna & White Bean Salad",
+                category: "Salads",
+                diet: "Low-Carb",
+                prepTime: 10,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 340,
+                image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tuna", "White Beans", "Red Onion", "Parsley", "Olive Oil", "Lemon", "Salt", "Black Pepper"],
+                instructions: [
+                    "Drain canned tuna and white beans into a mixing bowl.",
+                    "Add chopped red onion and fresh parsley.",
+                    "Drizzle with lemon juice and extra virgin olive oil.",
+                    "Season with salt and pepper, then toss lightly."
+                ]
+            },
+            {
+                id: 21,
+                title: "French Toast with Caramelized Bananas",
+                category: "Breakfast",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 420,
+                image: "https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Bread", "Eggs", "Milk", "Cinnamon", "Butter", "Bananas", "Maple Syrup", "Sugar"],
+                instructions: [
+                    "Whisk eggs, milk, cinnamon, and sugar in a shallow dish.",
+                    "Dip bread slices into egg mixture on both sides.",
+                    "Fry bread in melted butter until golden on both sides.",
+                    "Sauté sliced bananas with butter and maple syrup to top French toast."
+                ]
+            },
+            {
+                id: 22,
+                title: "Crispy Parmesan Garlic Chicken Tenders",
+                category: "Main Course",
+                diet: "General",
+                prepTime: 15,
+                cookTime: 20,
+                difficulty: "Easy",
+                calories: 490,
+                image: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Chicken Breast", "Breadcrumbs", "Parmesan Cheese", "Garlic Powder", "Eggs", "Flour", "Butter"],
+                instructions: [
+                    "Slice chicken breasts into long strips.",
+                    "Dredge strips in flour, whisked eggs, then grated parmesan and breadcrumb mixture.",
+                    "Arrange on baking sheet and drizzle with melted butter.",
+                    "Bake at 400°F for 20 minutes until crispy and cooked through."
+                ]
+            },
+            {
+                id: 23,
+                title: "Creamy Tomato & Basil Soup",
+                category: "Soup",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 20,
+                difficulty: "Easy",
+                calories: 270,
+                image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tomatoes", "Tomato Paste", "Garlic", "Onion", "Heavy Cream", "Vegetable Broth", "Basil", "Butter"],
+                instructions: [
+                    "Sauté garlic and onions in butter until translucent.",
+                    "Add crushed tomatoes, tomato paste, and vegetable broth.",
+                    "Simmer for 15 minutes.",
+                    "Blend until smooth, stir in heavy cream and chopped basil."
+                ]
+            },
+            {
+                id: 24,
+                title: "Savory Pork chops with Apple Glaze",
+                category: "Main Course",
+                diet: "Gluten-Free",
+                prepTime: 10,
+                cookTime: 20,
+                difficulty: "Medium",
+                calories: 510,
+                image: "https://images.unsplash.com/photo-1432139555190-58524dae6a55?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Pork Chops", "Apples", "Butter", "Honey", "Cinnamon", "Garlic", "Olive Oil", "Salt"],
+                instructions: [
+                    "Season pork chops with salt, pepper, and garlic.",
+                    "Sear in olive oil over medium-high heat for 5 mins per side; remove.",
+                    "Melt butter in pan, add sliced apples, honey, and cinnamon.",
+                    "Simmer apples until soft, serve spooned over warm pork chops."
+                ]
+            },
+            {
+                id: 25,
+                title: "Classic Caesar Salad with Homemade Croutons",
+                category: "Salads",
+                diet: "Vegetarian",
+                prepTime: 15,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 310,
+                image: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Lettuce", "Parmesan Cheese", "Bread", "Garlic", "Olive Oil", "Mayonnaise", "Lemon", "Dijon Mustard"],
+                instructions: [
+                    "Cube bread, toss with olive oil and garlic, bake until crispy.",
+                    "Whisk mayonnaise, lemon juice, garlic, and mustard for dressing.",
+                    "Chop romaine lettuce into large bowl.",
+                    "Toss lettuce with dressing, croutons, and grated parmesan."
+                ]
+            },
+            {
+                id: 26,
+                title: "Vegetable Cauliflower Rice Stir-Fry",
+                category: "Low-Carb",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 180,
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Cauliflower", "Carrots", "Peas", "Bell Peppers", "Soy Sauce", "Sesame Oil", "Garlic", "Green Onions"],
+                instructions: [
+                    "Grate cauliflower into rice-sized grains.",
+                    "Heat sesame oil in pan and sauté garlic, diced carrots, and bell peppers.",
+                    "Add cauliflower rice and peas, stir frying for 5-7 minutes.",
+                    "Season with soy sauce and garnish with green onions."
+                ]
+            },
+            {
+                id: 27,
+                title: "Fudgy Chocolate Chip Mug Cake",
+                category: "Dessert",
+                diet: "Vegetarian",
+                prepTime: 5,
+                cookTime: 2,
+                difficulty: "Easy",
+                calories: 350,
+                image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Flour", "Sugar", "Cocoa Powder", "Milk", "Butter", "Chocolate Chips", "Baking Powder"],
+                instructions: [
+                    "Whisk flour, sugar, cocoa powder, and baking powder in a microwave-safe mug.",
+                    "Add milk and melted butter, mixing with a fork until smooth.",
+                    "Fold in chocolate chips.",
+                    "Microwave on high for 70-80 seconds and enjoy warm."
+                ]
+            },
+            {
+                id: 28,
+                title: "Shrimp Scampi with Garlic Butter Pasta",
+                category: "Seafood",
+                diet: "General",
+                prepTime: 10,
+                cookTime: 12,
+                difficulty: "Medium",
+                calories: 510,
+                image: "https://images.unsplash.com/photo-1633964913295-ceb43826e7c9?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Shrimp", "Pasta", "Garlic", "Butter", "Olive Oil", "Lemon", "Parsley", "Red Pepper Flakes"],
+                instructions: [
+                    "Boil pasta until al dente.",
+                    "Sauté shrimp in olive oil and butter with garlic for 3 minutes until pink.",
+                    "Squeeze in fresh lemon juice and add red pepper flakes.",
+                    "Toss cooked pasta into pan with fresh parsley."
+                ]
+            },
+            {
+                id: 29,
+                title: "Sweet Potato & Black Bean Fajitas",
+                category: "Mexican",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 20,
+                difficulty: "Easy",
+                calories: 390,
+                image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Sweet Potatoes", "Black Beans", "Tortillas", "Bell Peppers", "Onion", "Cumin", "Lime", "Olive Oil"],
+                instructions: [
+                    "Cube sweet potatoes and roast with olive oil and cumin at 400°F for 20 mins.",
+                    "Sauté sliced onions and bell peppers in a skillet.",
+                    "Stir in black beans and cooked sweet potatoes.",
+                    "Serve in warm tortillas with lime juice."
+                ]
+            },
+            {
+                id: 30,
+                title: "Baked Buffalo Chicken Wings",
+                category: "Snack",
+                diet: "Low-Carb",
+                prepTime: 10,
+                cookTime: 40,
+                difficulty: "Easy",
+                calories: 520,
+                image: "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Chicken Wings", "Butter", "Hot Sauce", "Garlic Powder", "Salt", "Black Pepper"],
+                instructions: [
+                    "Pat chicken wings completely dry and season with garlic powder, salt, pepper.",
+                    "Bake at 425°F for 40 minutes, flipping halfway until extra crisp.",
+                    "Melt butter and whisk with hot sauce.",
+                    "Toss hot wings in buffalo sauce and serve immediately."
+                ]
+            },
+            {
+                id: 31,
+                title: "Classic Marinated Beef Steak",
+                category: "Main Course",
+                diet: "Low-Carb",
+                prepTime: 20,
+                cookTime: 10,
+                difficulty: "Medium",
+                calories: 590,
+                image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Steak", "Garlic", "Butter", "Rosemary", "Soy Sauce", "Olive Oil", "Black Pepper"],
+                instructions: [
+                    "Marinate steak with soy sauce, olive oil, and garlic for 15 minutes.",
+                    "Sear steak in a screaming hot cast iron pan for 3-4 minutes per side.",
+                    "Baste with butter and fresh rosemary during the last minute.",
+                    "Rest steak for 5 minutes before slicing."
+                ]
+            },
+            {
+                id: 32,
+                title: "Warm Apple Cinnamon Oatmeal Bowl",
+                category: "Breakfast",
+                diet: "Vegan",
+                prepTime: 5,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 280,
+                image: "https://images.unsplash.com/photo-1517673400267-0251440c45dc?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Oats", "Milk", "Apples", "Cinnamon", "Maple Syrup", "Walnuts"],
+                instructions: [
+                    "Simmer oats in milk over medium heat for 5 minutes.",
+                    "Stir in chopped apples, cinnamon, and maple syrup.",
+                    "Cook until apples soften slightly.",
+                    "Top with toasted walnuts and serve warm."
+                ]
+            },
+            {
+                id: 33,
+                title: "Loaded Baked Potato with Cheese & Bacon",
+                category: "Side Dish",
+                diet: "General",
+                prepTime: 10,
+                cookTime: 45,
+                difficulty: "Easy",
+                calories: 460,
+                image: "https://images.unsplash.com/photo-1592417817098-8f3d6ef23a85?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Potatoes", "Cheddar Cheese", "Sour Cream", "Bacon", "Green Onions", "Butter", "Salt"],
+                instructions: [
+                    "Poke potato with fork, rub with oil and salt, bake at 400°F for 45 minutes.",
+                    "Slice open top, fluff inside potato with butter.",
+                    "Top with melted cheddar cheese, crispy bacon bits, sour cream, and green onions."
+                ]
+            },
+            {
+                id: 34,
+                title: "Thai Green Curry with Vegetables",
+                category: "Asian",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 20,
+                difficulty: "Medium",
+                calories: 410,
+                image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Coconut Milk", "Green Curry Paste", "Zucchini", "Bell Peppers", "Bamboo Shoots", "Basil", "Rice"],
+                instructions: [
+                    "Sauté green curry paste in saucepan until fragrant.",
+                    "Pour coconut milk and bring to a gentle simmer.",
+                    "Add sliced zucchini, bell peppers, and bamboo shoots.",
+                    "Simmer for 15 minutes, stir in fresh basil, serve over hot rice."
+                ]
+            },
+            {
+                id: 35,
+                title: "Crispy Sesame Tofu Bites",
+                category: "Snack",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 290,
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tofu", "Cornstarch", "Soy Sauce", "Sesame Oil", "Sesame Seeds", "Honey"],
+                instructions: [
+                    "Press excess water from tofu and cut into cubes.",
+                    "Toss tofu cubes in cornstarch until coated.",
+                    "Pan fry in sesame oil until golden and crispy on all sides.",
+                    "Drizzle with mixture of soy sauce and honey; sprinkle sesame seeds."
+                ]
+            },
+            {
+                id: 36,
+                title: "Refreshing Mango Avocado Salsa",
+                category: "Appetizer",
+                diet: "Vegan",
+                prepTime: 15,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 190,
+                image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Mango", "Avocado", "Red Onion", "Coriander", "Lime", "Jalapeño", "Salt"],
+                instructions: [
+                    "Dice ripe mangoes and avocados into clean cubes.",
+                    "Finely chop red onion, jalapeño, and fresh coriander.",
+                    "Toss gently together in a bowl with fresh lime juice and salt.",
+                    "Chill 15 minutes before serving with chips or over grilled fish."
+                ]
+            },
+            {
+                id: 37,
+                title: "Traditional Italian Margherita Pizza",
+                category: "Italian",
+                diet: "Vegetarian",
+                prepTime: 20,
+                cookTime: 12,
+                difficulty: "Medium",
+                calories: 620,
+                image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Flour", "Yeast", "Tomato Sauce", "Mozzarella", "Basil", "Olive Oil", "Salt"],
+                instructions: [
+                    "Roll out fermented pizza dough onto a baking sheet.",
+                    "Spread thin layer of tomato sauce.",
+                    "Top with fresh mozzarella slices and drizzle olive oil.",
+                    "Bake at highest oven temp (475°F+) for 10-12 minutes.",
+                    "Top with fresh basil leaves."
+                ]
+            },
+            {
+                id: 38,
+                title: "Cheesy Bacon & Egg Breakfast Burrito",
+                category: "Breakfast",
+                diet: "General",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 530,
+                image: "https://images.unsplash.com/photo-1618040996337-56904b7850b9?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tortillas", "Eggs", "Bacon", "Cheddar Cheese", "Salsa", "Butter"],
+                instructions: [
+                    "Fry bacon strips until crispy, then crumble.",
+                    "Scramble eggs softly in butter.",
+                    "Layer scrambled eggs, bacon, and cheddar cheese inside large tortilla.",
+                    "Wrap burrito tightly and grill on pan until crisp."
+                ]
+            },
+            {
+                id: 39,
+                title: "Classic Cheesy Garlic Bread Sliders",
+                category: "Snack",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 12,
+                difficulty: "Easy",
+                calories: 380,
+                image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Bread", "Butter", "Garlic", "Mozzarella", "Parsley", "Parmesan Cheese"],
+                instructions: [
+                    "Mix softened butter with minced garlic and chopped parsley.",
+                    "Slice bread roll horizontally and spread garlic butter.",
+                    "Stuff generously with mozzarella and parmesan cheese.",
+                    "Bake at 375°F for 12 minutes until cheese is golden bubbly."
+                ]
+            },
+            {
+                id: 40,
+                title: "Creamy Chicken & Wild Rice Soup",
+                category: "Soup",
+                diet: "General",
+                prepTime: 15,
+                cookTime: 30,
+                difficulty: "Medium",
+                calories: 410,
+                image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Chicken Breast", "Rice", "Carrots", "Celery", "Onion", "Heavy Cream", "Chicken Broth", "Butter", "Thyme"],
+                instructions: [
+                    "Sauté onions, carrots, and celery in butter.",
+                    "Add chicken broth, thyme, and wild rice; simmer for 20 minutes.",
+                    "Add shredded cooked chicken breast and heavy cream.",
+                    "Simmer 10 minutes longer until thick and creamy."
+                ]
+            },
+            {
+                id: 41,
+                title: "Savory Pork Carnitas Tacos",
+                category: "Mexican",
+                diet: "Gluten-Free",
+                prepTime: 15,
+                cookTime: 40,
+                difficulty: "Medium",
+                calories: 540,
+                image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Pork Chops", "Tortillas", "Onion", "Coriander", "Lime", "Cumin", "Garlic", "Orange"],
+                instructions: [
+                    "Slow cook pork with garlic, cumin, and orange juice until shreddable.",
+                    "Crisp shredded pork in a hot pan with oil.",
+                    "Serve in warm corn tortillas with diced onion and fresh coriander.",
+                    "Squeeze lime over tacos."
+                ]
+            },
+            {
+                id: 42,
+                title: "Healthy Creamy Avocado Pasta",
+                category: "Pasta",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 10,
+                difficulty: "Easy",
+                calories: 410,
+                image: "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Pasta", "Avocado", "Garlic", "Basil", "Lemon", "Olive Oil", "Cherry Tomatoes", "Salt"],
+                instructions: [
+                    "Cook pasta in salted boiling water.",
+                    "Blend avocado, garlic, fresh basil, lemon juice, and olive oil until smooth sauce.",
+                    "Toss warm pasta with avocado sauce.",
+                    "Top with halved cherry tomatoes and black pepper."
+                ]
+            },
+            {
+                id: 43,
+                title: "Golden Crispy Vegetable Spring Rolls",
+                category: "Appetizer",
+                diet: "Vegan",
+                prepTime: 20,
+                cookTime: 10,
+                difficulty: "Medium",
+                calories: 270,
+                image: "https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Carrots", "Cabbage", "Garlic", "Soy Sauce", "Sesame Oil", "Flour", "Vegetable Oil"],
+                instructions: [
+                    "Shred carrots and cabbage thinly.",
+                    "Sauté veggies with garlic, sesame oil, and soy sauce until soft.",
+                    "Wrap filling in spring roll pastry wrappers.",
+                    "Deep fry or air fry in oil until golden brown and crispy."
+                ]
+            },
+            {
+                id: 44,
+                title: "Sweet Honey Butter Glazed Carrots",
+                category: "Side Dish",
+                diet: "Vegetarian",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 170,
+                image: "https://images.unsplash.com/photo-1592417817098-8f3d6ef23a85?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Carrots", "Butter", "Honey", "Parsley", "Salt", "Black Pepper"],
+                instructions: [
+                    "Slice carrots into diagonal sticks.",
+                    "Melt butter and honey in a skillet over medium heat.",
+                    "Add carrots, cover, and cook for 12 minutes until tender.",
+                    "Uncover and glaze on high heat for 2 minutes; top with parsley."
+                ]
+            },
+            {
+                id: 45,
+                title: "Strawberry Banana Smoothie Bowl",
+                category: "Breakfast",
+                diet: "Vegan",
+                prepTime: 5,
+                cookTime: 0,
+                difficulty: "Easy",
+                calories: 260,
+                image: "https://images.unsplash.com/photo-1517673400267-0251440c45dc?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Bananas", "Strawberries", "Milk", "Honey", "Chia Seeds"],
+                instructions: [
+                    "Blend frozen strawberries, banana, and splash of milk until thick.",
+                    "Pour thick smoothie into a serving bowl.",
+                    "Top with sliced fresh fruit, chia seeds, and honey drizzle."
+                ]
+            },
+            {
+                id: 46,
+                title: "Classic French Onion Soup",
+                category: "Soup",
+                diet: "General",
+                prepTime: 15,
+                cookTime: 40,
+                difficulty: "Medium",
+                calories: 360,
+                image: "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Onion", "Butter", "Vegetable Broth", "Bread", "Mozzarella", "Garlic", "Thyme"],
+                instructions: [
+                    "Slowly caramelize thin onion slices in butter for 30 minutes until deep brown.",
+                    "Add garlic, thyme, and broth; simmer for 15 minutes.",
+                    "Ladle soup into oven-safe bowls, top with toasted bread and mozzarella.",
+                    "Broil until cheese is bubbly and browned."
+                ]
+            },
+            {
+                id: 47,
+                title: "Cheesy Garlic Spinach Stuffed Mushrooms",
+                category: "Appetizer",
+                diet: "Vegetarian",
+                prepTime: 15,
+                cookTime: 20,
+                difficulty: "Easy",
+                calories: 230,
+                image: "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Mushrooms", "Spinach", "Cream Cheese", "Garlic", "Parmesan Cheese", "Breadcrumbs", "Butter"],
+                instructions: [
+                    "Remove stems from large mushrooms.",
+                    "Mix softened cream cheese, garlic, wilted spinach, and parmesan.",
+                    "Stuff mixture into mushroom caps and sprinkle breadcrumbs.",
+                    "Bake at 375°F for 20 minutes until golden."
+                ]
+            },
+            {
+                id: 48,
+                title: "Classic Warm Chocolate Brownies",
+                category: "Dessert",
+                diet: "Vegetarian",
+                prepTime: 15,
+                cookTime: 25,
+                difficulty: "Medium",
+                calories: 410,
+                image: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Butter", "Sugar", "Eggs", "Flour", "Cocoa Powder", "Chocolate Chips", "Vanilla"],
+                instructions: [
+                    "Melt butter and whisk with sugar and eggs until smooth.",
+                    "Fold in flour and cocoa powder gently.",
+                    "Stir in chocolate chips and pour into greased square pan.",
+                    "Bake at 350°F for 25 minutes until fudgy inside."
+                ]
+            },
+            {
+                id: 49,
+                title: "Spicy Beef Nacho Platter",
+                category: "Snack",
+                diet: "General",
+                prepTime: 10,
+                cookTime: 15,
+                difficulty: "Easy",
+                calories: 610,
+                image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Tortillas", "Ground Beef", "Cheddar Cheese", "Black Beans", "Jalapeño", "Salsa", "Sour Cream"],
+                instructions: [
+                    "Brown ground beef with taco seasoning.",
+                    "Layer tortilla chips, black beans, beef, and shredded cheddar on a tray.",
+                    "Bake at 400°F for 10 minutes until cheese melts.",
+                    "Top with sliced jalapeños, salsa, and sour cream."
+                ]
+            },
+            {
+                id: 50,
+                title: "Zesty Lemon Herb Roasted Broccoli",
+                category: "Side Dish",
+                diet: "Vegan",
+                prepTime: 10,
+                cookTime: 20,
+                difficulty: "Easy",
+                calories: 140,
+                image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+                ingredients: ["Broccoli", "Olive Oil", "Garlic", "Lemon", "Parmesan Cheese", "Salt", "Black Pepper"],
+                instructions: [
+                    "Cut broccoli into florets and toss with olive oil, minced garlic, salt, and pepper.",
+                    "Spread on baking sheet and roast at 425°F for 20 mins until charred at edges.",
+                    "Squeeze fresh lemon juice over broccoli and dust with parmesan."
+                ]
+            }
+        ];
+
+        /* ----------------------------------------------------
+           2. COMMON PANTRY CATEGORIES & INGREDIENTS MAPPING
+           ---------------------------------------------------- */
+        const pantryCategories = [
+            {
+                name: "Produce & Fresh",
+                icon: "fa-seedling",
+                items: ["Garlic", "Onion", "Tomatoes", "Lemon", "Lime", "Avocado", "Spinach", "Broccoli", "Carrots", "Cucumber", "Mushrooms", "Bell Peppers", "Basil", "Parsley", "Coriander", "Potatoes", "Sweet Potatoes"]
+            },
+            {
+                name: "Dairy & Eggs",
+                icon: "fa-egg",
+                items: ["Eggs", "Butter", "Milk", "Heavy Cream", "Cheddar Cheese", "Parmesan Cheese", "Mozzarella", "Greek Yogurt", "Sour Cream", "Cream Cheese"]
+            },
+            {
+                name: "Meat & Seafood",
+                icon: "fa-drumstick-bite",
+                items: ["Chicken Breast", "Chicken Wings", "Ground Beef", "Steak", "Pork Chops", "Bacon", "Salmon", "Shrimp", "Tuna"]
+            },
+            {
+                name: "Pantry & Grains",
+                icon: "fa-box-archive",
+                items: ["Pasta", "Rice", "Flour", "Bread", "Tortillas", "Oats", "Noodles", "Chickpeas", "Lentils", "Black Beans", "White Beans", "Tofu"]
+            },
+            {
+                name: "Oils, Sauces & Spices",
+                icon: "fa-bottle-droplet",
+                items: ["Olive Oil", "Sesame Oil", "Soy Sauce", "Tomato Sauce", "Honey", "Maple Syrup", "Peanut Butter", "Cumin", "Chili Powder", "Paprika", "Cinnamon", "Sugar"]
+            }
+        ];
+
+        /* ----------------------------------------------------
+           3. APPLICATION STATE
+           ---------------------------------------------------- */
+        let userPantry = new Set(["Garlic", "Olive Oil", "Eggs", "Pasta", "Tomatoes", "Butter"]);
+        let activeDiet = "All";
+        let favorites = new Set(JSON.parse(localStorage.getItem('pantrychef_favs') || '[]'));
+        let showFavoritesOnly = false;
+        let currentRecipeModalId = null;
+
+        /* ----------------------------------------------------
+           4. DOM INITIALIZATION & EVENT LISTENERS
+           ---------------------------------------------------- */
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPantryCategories();
+            renderSelectedTags();
+            filterAndRenderRecipes();
+            updateFavCountBadge();
+
+            // Custom Ingredient Form
+            document.getElementById('add-custom-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const input = document.getElementById('custom-ingredient-input');
+                const val = input.value.trim();
+                if (val) {
+                    // Capitalize first letter
+                    const formatted = val.charAt(0).toUpperCase() + val.slice(1);
+                    userPantry.add(formatted);
+                    input.value = '';
+                    renderSelectedTags();
+                    filterAndRenderRecipes();
+                }
+            });
+
+            // Clear All Pantry
+            document.getElementById('clear-all-pantry').addEventListener('click', () => {
+                userPantry.clear();
+                renderPantryCategories();
+                renderSelectedTags();
+                filterAndRenderRecipes();
+            });
+
+            // Search & Sort Controls
+            document.getElementById('recipe-search').addEventListener('input', filterAndRenderRecipes);
+            document.getElementById('sort-select').addEventListener('change', filterAndRenderRecipes);
+            document.getElementById('match-threshold').addEventListener('change', filterAndRenderRecipes);
+
+            // Dietary Filter Buttons
+            document.querySelectorAll('.diet-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.diet-btn').forEach(b => {
+                        b.classList.remove('bg-brand-500', 'text-white');
+                        b.classList.add('bg-slate-100', 'text-slate-600');
+                    });
+                    e.currentTarget.classList.remove('bg-slate-100', 'text-slate-600');
+                    e.currentTarget.classList.add('bg-brand-500', 'text-white');
+                    
+                    activeDiet = e.currentTarget.dataset.diet;
+                    filterAndRenderRecipes();
+                });
+            });
+
+            // Reset Filters
+            document.getElementById('reset-filters-btn').addEventListener('click', () => {
+                userPantry.clear();
+                activeDiet = "All";
+                showFavoritesOnly = false;
+                document.getElementById('recipe-search').value = "";
+                document.getElementById('match-threshold').value = "0";
+                
+                document.querySelectorAll('.diet-btn').forEach(b => {
+                    if (b.dataset.diet === "All") {
+                        b.classList.add('bg-brand-500', 'text-white');
+                    } else {
+                        b.classList.remove('bg-brand-500', 'text-white');
+                        b.classList.add('bg-slate-100', 'text-slate-600');
+                    }
+                });
+
+                renderPantryCategories();
+                renderSelectedTags();
+                filterAndRenderRecipes();
+            });
+
+            // Modal Controls
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+            document.getElementById('modal-close-bottom').addEventListener('click', closeModal);
+            document.getElementById('recipe-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'recipe-modal') closeModal();
+            });
+
+            // Favorites Toggle Modal Button
+            document.getElementById('modal-fav-btn').addEventListener('click', () => {
+                if (currentRecipeModalId) {
+                    toggleFavorite(currentRecipeModalId);
+                    updateModalFavBtnState(currentRecipeModalId);
+                }
+            });
+
+            // Top Nav Saved Filter Button
+            document.getElementById('favorites-toggle-btn').addEventListener('click', () => {
+                showFavoritesOnly = !showFavoritesOnly;
+                const btn = document.getElementById('favorites-toggle-btn');
+                if (showFavoritesOnly) {
+                    btn.classList.add('bg-red-100', 'text-red-700', 'ring-2', 'ring-red-400');
+                } else {
+                    btn.classList.remove('bg-red-100', 'text-red-700', 'ring-2', 'ring-red-400');
+                }
+                filterAndRenderRecipes();
+            });
+        });
+
+        /* ----------------------------------------------------
+           5. RENDERING PANTRY & SELECTION
+           ---------------------------------------------------- */
+        function renderPantryCategories() {
+            const container = document.getElementById('pantry-categories');
+            container.innerHTML = '';
+
+            pantryCategories.forEach((cat, idx) => {
+                const catEl = document.createElement('div');
+                catEl.className = "border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50/50";
+                
+                catEl.innerHTML = `
+                    <button class="w-full text-left px-3.5 py-2.5 font-semibold text-xs text-slate-700 flex items-center justify-between hover:bg-slate-100 transition" onclick="toggleCategoryAccordion(${idx})">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid ${cat.icon} text-brand-500"></i>
+                            ${cat.name}
+                        </span>
+                        <i class="fa-solid fa-chevron-down text-slate-400 text-[10px] transition-transform duration-200" id="cat-arrow-${idx}"></i>
+                    </button>
+                    <div id="cat-items-${idx}" class="p-3 bg-white grid grid-cols-2 gap-1.5 border-t border-slate-100 hidden">
+                        ${cat.items.map(item => {
+                            const isSelected = userPantry.has(item);
+                            return `
+                                <button onclick="togglePantryItem('${item.replace(/'/g, "\\'")}')" 
+                                    class="text-left px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex items-center justify-between ${
+                                        isSelected 
+                                        ? 'bg-brand-50 border-brand-300 text-brand-700 font-semibold' 
+                                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300'
+                                    }">
+                                    <span class="truncate">${item}</span>
+                                    ${isSelected ? '<i class="fa-solid fa-check text-brand-600 text-[10px]"></i>' : ''}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+                container.appendChild(catEl);
+            });
+        }
+
+        function toggleCategoryAccordion(idx) {
+            const el = document.getElementById(`cat-items-${idx}`);
+            const arrow = document.getElementById(`cat-arrow-${idx}`);
+            el.classList.toggle('hidden');
+            arrow.classList.toggle('rotate-180');
+        }
+
+        function togglePantryItem(item) {
+            if (userPantry.has(item)) {
+                userPantry.delete(item);
+            } else {
+                userPantry.add(item);
+            }
+            renderPantryCategories();
+            renderSelectedTags();
+            filterAndRenderRecipes();
+        }
+
+        function renderSelectedTags() {
+            const container = document.getElementById('selected-tags-container');
+            const countEl = document.getElementById('selected-count');
+            const clearBtn = document.getElementById('clear-all-pantry');
+
+            countEl.textContent = userPantry.size;
+
+            if (userPantry.size === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400 italic self-center px-1">Select ingredients below to match recipes...</span>`;
+                clearBtn.classList.add('hidden');
+                return;
+            }
+
+            clearBtn.classList.remove('hidden');
+            container.innerHTML = Array.from(userPantry).map(item => `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-500 text-white text-xs font-semibold shadow-sm">
+                    ${item}
+                    <button onclick="togglePantryItem('${item.replace(/'/g, "\\'")}')" class="hover:text-amber-200 transition">
+                        <i class="fa-solid fa-xmark text-[11px]"></i>
+                    </button>
+                </span>
+            `).join('');
+        }
+
+        /* ----------------------------------------------------
+           6. RECIPE MATCHING & SEARCH ENGINE
+           ---------------------------------------------------- */
+        function calculateRecipeMatch(recipe) {
+            if (recipe.ingredients.length === 0) return { matchPercent: 0, missing: [] };
+
+            let matchedCount = 0;
+            const missing = [];
+
+            recipe.ingredients.forEach(ing => {
+                // Check case-insensitive partial match
+                const hasItem = Array.from(userPantry).some(pantryItem => 
+                    ing.toLowerCase().includes(pantryItem.toLowerCase()) || 
+                    pantryItem.toLowerCase().includes(ing.toLowerCase())
+                );
+
+                if (hasItem) {
+                    matchedCount++;
+                } else {
+                    missing.push(ing);
+                }
+            });
+
+            const matchPercent = Math.round((matchedCount / recipe.ingredients.length) * 100);
+            return {
+                matchPercent,
+                matchedCount,
+                totalCount: recipe.ingredients.length,
+                missing
+            };
+        }
+
+        function filterAndRenderRecipes() {
+            const searchQuery = document.getElementById('recipe-search').value.toLowerCase().trim();
+            const sortBy = document.getElementById('sort-select').value;
+            const minThreshold = parseInt(document.getElementById('match-threshold').value, 10);
+
+            let processed = recipeDatabase.map(recipe => {
+                const matchData = calculateRecipeMatch(recipe);
+                return { ...recipe, matchData };
+            });
+
+            // 1. Dietary Filter
+            if (activeDiet !== "All") {
+                processed = processed.filter(r => r.diet === activeDiet);
+            }
+
+            // 2. Favorites Filter
+            if (showFavoritesOnly) {
+                processed = processed.filter(r => favorites.has(r.id));
+            }
+
+            // 3. Search Filter
+            if (searchQuery) {
+                processed = processed.filter(r => 
+                    r.title.toLowerCase().includes(searchQuery) ||
+                    r.ingredients.some(i => i.toLowerCase().includes(searchQuery)) ||
+                    r.category.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            // 4. Threshold Filter
+            if (minThreshold > 0) {
+                processed = processed.filter(r => r.matchData.matchPercent >= minThreshold);
+            }
+
+            // 5. Sorting
+            processed.sort((a, b) => {
+                if (sortBy === 'match') {
+                    return b.matchData.matchPercent - a.matchData.matchPercent;
+                } else if (sortBy === 'time') {
+                    return (a.prepTime + a.cookTime) - (b.prepTime + b.cookTime);
+                } else if (sortBy === 'calories') {
+                    return a.calories - b.calories;
+                } else if (sortBy === 'alpha') {
+                    return a.title.localeCompare(b.title);
+                }
+                return 0;
+            });
+
+            renderGrid(processed);
+        }
+
+        function renderGrid(recipes) {
+            const grid = document.getElementById('recipe-grid');
+            const countEl = document.getElementById('results-count');
+            const noResults = document.getElementById('no-recipes-found');
+
+            countEl.textContent = `Showing ${recipes.length} recipe${recipes.length === 1 ? '' : 's'}`;
+
+            if (recipes.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+
+            noResults.classList.add('hidden');
+            grid.innerHTML = recipes.map(r => {
+                const isFav = favorites.has(r.id);
+                const matchPct = r.matchData.matchPercent;
+                
+                let badgeColor = "bg-slate-100 text-slate-700";
+                if (matchPct === 100) badgeColor = "bg-emerald-500 text-white font-bold";
+                else if (matchPct >= 70) badgeColor = "bg-amber-500 text-white font-bold";
+                else if (matchPct > 0) badgeColor = "bg-slate-800/80 backdrop-blur-md text-white";
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col hover:shadow-lg transition-all duration-300 group">
+                        
+                        <!-- Card Header Image -->
+                        <div class="relative h-48 overflow-hidden bg-slate-100">
+                            <img src="${r.image}" alt="${r.title}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <div class="absolute inset-0 recipe-card-gradient"></div>
+
+                            <!-- Top Actions -->
+                            <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
+                                <span class="${badgeColor} text-xs px-2.5 py-1 rounded-lg shadow-sm backdrop-blur-sm">
+                                    <i class="fa-solid fa-bullseye mr-1"></i>${matchPct}% Match
+                                </span>
+                                <button onclick="toggleFavorite(${r.id})" class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-slate-600 hover:text-red-500 transition shadow">
+                                    <i class="${isFav ? 'fa-solid text-red-500' : 'fa-regular'} fa-heart"></i>
+                                </button>
+                            </div>
+
+                            <!-- Title Over Image -->
+                            <div class="absolute bottom-3 left-3 right-3 text-white">
+                                <div class="flex items-center gap-2 mb-1 text-[11px] font-semibold text-brand-200">
+                                    <span>${r.category}</span>
+                                    <span>•</span>
+                                    <span>${r.diet}</span>
+                                </div>
+                                <h3 class="font-bold text-base leading-snug line-clamp-1 drop-shadow-sm">${r.title}</h3>
+                            </div>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="p-4 flex-1 flex flex-col justify-between space-y-3">
+                            
+                            <!-- Quick Meta Info -->
+                            <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+                                <span><i class="fa-regular fa-clock text-brand-500 mr-1"></i>${r.prepTime + r.cookTime} mins</span>
+                                <span><i class="fa-solid fa-fire text-amber-500 mr-1"></i>${r.calories} kcal</span>
+                                <span><i class="fa-solid fa-gauge text-slate-400 mr-1"></i>${r.difficulty}</span>
+                            </div>
+
+                            <!-- Missing Ingredients Pill -->
+                            <div class="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                ${r.matchData.missing.length === 0 
+                                    ? `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i> You have all ingredients!</span>`
+                                    : `<span class="text-slate-500"><strong class="text-slate-700">Missing (${r.matchData.missing.length}):</strong> ${r.matchData.missing.slice(0, 3).join(', ')}${r.matchData.missing.length > 3 ? '...' : ''}</span>`
+                                }
+                            </div>
+
+                            <!-- View Recipe Button -->
+                            <button onclick="openRecipeModal(${r.id})" class="w-full py-2.5 bg-slate-900 hover:bg-brand-500 text-white font-semibold rounded-xl text-xs transition duration-200 flex items-center justify-center gap-2">
+                                <span>Cook & View Recipe</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </button>
+
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        /* ----------------------------------------------------
+           7. MODAL & INTERACTIVE COOK MODE
+           ---------------------------------------------------- */
+        function openRecipeModal(id) {
+            const recipe = recipeDatabase.find(r => r.id === id);
+            if (!recipe) return;
+
+            currentRecipeModalId = id;
+            const matchData = calculateRecipeMatch(recipe);
+
+            document.getElementById('modal-img').src = recipe.image;
+            document.getElementById('modal-title').textContent = recipe.title;
+            document.getElementById('modal-category').textContent = recipe.category;
+            document.getElementById('modal-diet').textContent = recipe.diet;
+            document.getElementById('modal-difficulty').textContent = recipe.difficulty;
+            document.getElementById('modal-time').innerHTML = `<i class="fa-regular fa-clock text-brand-500 mr-1"></i>${recipe.prepTime + recipe.cookTime} mins`;
+            document.getElementById('modal-calories').innerHTML = `<i class="fa-solid fa-fire text-amber-500 mr-1"></i>${recipe.calories} kcal`;
+            document.getElementById('modal-match-badge').innerHTML = `<i class="fa-solid fa-bullseye mr-1"></i>${matchData.matchPercent}% Match`;
+
+            // Missing Ingredients Box
+            const missingBox = document.getElementById('modal-missing-box');
+            const missingList = document.getElementById('modal-missing-list');
+            if (matchData.missing.length > 0) {
+                missingBox.classList.remove('hidden');
+                missingList.textContent = matchData.missing.join(', ');
+            } else {
+                missingBox.classList.add('hidden');
+            }
+
+            // Render Ingredients Checklist
+            const ingListContainer = document.getElementById('modal-ingredients-list');
+            ingListContainer.innerHTML = recipe.ingredients.map(ing => {
+                const inPantry = Array.from(userPantry).some(p => ing.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(ing.toLowerCase()));
+                return `
+                    <li class="flex items-center justify-between p-2 rounded-lg ${inPantry ? 'bg-emerald-50 text-emerald-900 border border-emerald-100' : 'bg-slate-50 text-slate-700 border border-slate-100'}">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid ${inPantry ? 'fa-check text-emerald-600' : 'fa-basket-shopping text-slate-400'} text-xs"></i>
+                            ${ing}
+                        </span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${inPantry ? 'bg-emerald-200/60 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+                            ${inPantry ? 'In Pantry' : 'Missing'}
+                        </span>
+                    </li>
+                `;
+            }).join('');
+
+            // Render Step-by-Step Cooking Checklist
+            const stepsContainer = document.getElementById('modal-steps-container');
+            stepsContainer.innerHTML = recipe.instructions.map((step, idx) => `
+                <label class="flex gap-3 p-3 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100/80 transition cursor-pointer group">
+                    <input type="checkbox" class="mt-0.5 rounded border-slate-300 text-brand-500 focus:ring-brand-500 w-4 h-4">
+                    <span class="text-xs text-slate-700 leading-relaxed group-has-[:checked]:line-through group-has-[:checked]:text-slate-400">
+                        <strong class="text-slate-900 mr-1 group-has-[:checked]:text-slate-400">Step ${idx + 1}:</strong> ${step}
+                    </span>
+                </label>
+            `).join('');
+
+            updateModalFavBtnState(id);
+
+            // Show Modal
+            const modal = document.getElementById('recipe-modal');
+            const container = document.getElementById('modal-container');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            container.classList.remove('scale-95');
+            container.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('recipe-modal');
+            const container = document.getElementById('modal-container');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            container.classList.remove('scale-100');
+            container.classList.add('scale-95');
+            currentRecipeModalId = null;
+        }
+
+        /* ----------------------------------------------------
+           8. LOCALSTORAGE FAVORITES MANAGEMENT
+           ---------------------------------------------------- */
+        function toggleFavorite(id) {
+            if (favorites.has(id)) {
+                favorites.delete(id);
+            } else {
+                favorites.add(id);
+            }
+            localStorage.setItem('pantrychef_favs', JSON.stringify(Array.from(favorites)));
+            updateFavCountBadge();
+            filterAndRenderRecipes();
+        }
+
+        function updateFavCountBadge() {
+            document.getElementById('fav-count-badge').textContent = favorites.size;
+        }
+
+        function updateModalFavBtnState(id) {
+            const btn = document.getElementById('modal-fav-btn');
+            const isFav = favorites.has(id);
+            if (isFav) {
+                btn.innerHTML = `<i class="fa-solid fa-heart text-red-500 text-base"></i><span class="text-red-600">Saved in Favorites</span>`;
+            } else {
+                btn.innerHTML = `<i class="fa-regular fa-heart text-base"></i><span>Save to Favorites</span>`;
+            }
+        }
+    </script>
+</body>
+</html>
